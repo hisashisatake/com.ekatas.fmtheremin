@@ -50,14 +50,19 @@ static double ampNum = 0.0;
 static double phase;
 #define PI 3.141592
 
+
 void tone_dynamic2(){
-//    unsigned i;
-//    for (i = 0; i < OUTPUT_FRAMES; ++i) {
-//        phase += 22050*freqNum / 44100.0;
-//        phase = (phase >= 1.0) ? -1 : phase;
-//        outputBuffer[i] = (phase < 0) ? 0 : 32768*ampNum;
-//    }
-	gen_fm(freqNum);
+#if 0
+    unsigned i;
+    for (i = 0; i < OUTPUT_FRAMES; ++i) {
+        phase += 22050*freqNum / 44100.0;
+        phase = (phase >= 1.0) ? -1 : phase;
+        outputBuffer[i] = (phase < 0) ? 0 : 32768*ampNum;
+    }
+#endif
+    gen_fm();
+    nextBuffer = outputBuffer;
+    nextSize = sizeof(outputBuffer);
 }
 
 // this callback handler is called every time a buffer finishes playing
@@ -67,6 +72,7 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
     assert(NULL == context);
 
     tone_dynamic2();
+
     SLresult result;
     result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
     assert(SL_RESULT_SUCCESS == result);
@@ -165,7 +171,7 @@ void setTone()
     nextSize = sizeof(outputBuffer);
     //result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
 
-    LOGI("call setTone, nextSize:%f", nextSize);
+    LOGI("call setTone");
 }
 
 void setFreq(double count)
@@ -180,6 +186,7 @@ void setAmp(double count)
 
 void shutdown()
 {
+
     // destroy buffer queue audio player object, and invalidate all associated interfaces
     if (bqPlayerObject != NULL) {
         (*bqPlayerObject)->Destroy(bqPlayerObject);
@@ -199,6 +206,7 @@ void shutdown()
         engineObject = NULL;
         engineEngine = NULL;
     }
+
 }
 
 
@@ -349,7 +357,7 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     	switch (action) {
     		case AMOTION_EVENT_ACTION_MOVE:
     	    	if (keyon == 0) {
-    	            setTone();
+    	            tone_dynamic2();
     	    		SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
     	    	}
 
@@ -362,12 +370,13 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     			setAmp((double)engine->state.y/engine->height);
 
     			LOGI("state.x:%f",(double)engine->state.x);
-    			LOGI("Freq:%f", freq * 10000);
+    			LOGI("Freq:%f", freq);
 
     			return 1;
     		case AMOTION_EVENT_ACTION_UP:
     		    nextBuffer = NULL;
     		    nextSize = 0;
+	    		SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
 
     		    keyon = 0;
 
