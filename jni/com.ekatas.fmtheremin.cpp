@@ -60,7 +60,7 @@ void tone_dynamic2(){
         outputBuffer[i] = (phase < 0) ? 0 : 32768*ampNum;
     }
 #endif
-    gen_fm();
+    gen_fm(freqNum * 10000);
     nextBuffer = outputBuffer;
     nextSize = sizeof(outputBuffer);
 }

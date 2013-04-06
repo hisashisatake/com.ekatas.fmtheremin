@@ -21,7 +21,7 @@ typedef struct
   double *s; /* 音データ */
 } MONO_PCM;
 
-#define OUTPUT_FRAMES 100
+#define OUTPUT_FRAMES 10
 static short outputBuffer[OUTPUT_FRAMES];
 
 static short *nextBuffer;
@@ -32,49 +32,43 @@ static int keyon = 0;
 
 static int fmCount;
 
-void ADSR(double e[], int A, int D, double S, int R, int gate, int duration)
+double ADSR(int A, int D, double S, int R, int gate, int duration)
 {
-  int n;
-
-  if (A != 0)
-  {
-    for (n = 0; n < A; n++)
-    {
-      e[n] = 1.0 - exp(-5.0 * n / A);
-    }
+  if (A != 0){
+	  if (keyon < A) {
+		  return 1.0 - exp(-5.0 * keyon / A);
+	  }
   }
 
-  if (D != 0)
-  {
-    for (n = A; n < gate; n++)
-    {
-      e[n] = S + (1 - S) * exp(-5.0 * (n - A) / D);
-    }
+  if (D != 0) {
+	  if (keyon >= A && (keyon < D && keyon < gate)) {
+		  return S + (1 - S) * exp(-5.0 * (keyon - A) / D);
+	  }
   }
-  else
-  {
-    for (n = A; n < gate; n++)
-    {
-      e[n] = S;
-    }
+  else {
+	  if (keyon >= A && (keyon < D && keyon < gate)) {
+		  return S;
+	  }
   }
 
-  if (R != 0)
-  {
-    for (n = gate; n < duration; n++)
-    {
-      e[n] = e[gate - 1] * exp(-5.0 * (n - gate + 1) / R);
-    }
+  return S;
+
+#if 0
+  if (R != 0) {
+	  if (keyon >=A && keyon >=D && keyon < gate) {
+		  return e[gate - 1] * exp(-5.0 * (n - gate + 1) / R);
+  	  }
   }
+#endif
 }
 
-void gen_fm()
+void gen_fm(double fc)
 {
     MONO_PCM pcm;
     int n;
-//    int A, D, R, gate, duration;
+    int A, D, R, gate, duration;
 //    double *ac, fc, *am, ratio, gain, S;
-    double fc, num, fm;
+    double S, ac, am, num, fm;
 
     pcm.fs = 44100; /* 標本化周波数 */
     pcm.bits = 16; /* 量子化精度 */
@@ -109,16 +103,31 @@ void gen_fm()
     fm = fc * ratio; /* モジュレータ周波数 */
 #endif
 
-    fc = 440.0;
+    A = 0;
+    D = pcm.fs * 4;
+    S = 0.0;
+    R = pcm.fs * 4;
+    gate = pcm.fs * 4;
+    duration = pcm.fs * 4;
+	ac = ADSR(A, D, S, R, gate, duration);
+
+    gate = pcm.fs * 4;
+    duration = pcm.fs * 4;
+    A = 0;
+    D = pcm.fs * 2;
+    S = 0.0;
+    R = pcm.fs * 2;
+    am = ADSR(A, D, S, R, gate, duration);
+
     fm = fc * 3.5;
 
     /* FM音源 */
 //    for (n = 0; n < pcm.length; n++)
     for (n = 0; n < OUTPUT_FRAMES; ++n)
     {
-    	//num = ac[n] * sin(2.0 * M_PI * fc * n / pcm.fs + am[n] * sin(2.0 * M_PI * fm * n / pcm.fs));
+    	num = ac * sin(2.0 * M_PI * fc * keyon / pcm.fs + am * sin(2.0 * M_PI * fm * keyon / pcm.fs));
     	//num = sin(2.0 * M_PI * fc * keyon / pcm.fs * sin(2.0 * M_PI * fm * keyon / pcm.fs));
-    	num = sin(2.0 * M_PI * fc * keyon / pcm.fs);
+    	//num = sin(2.0 * M_PI * fc * keyon / pcm.fs);
     	outputBuffer[n] = num * 10000;
 
     	//ログを出力
