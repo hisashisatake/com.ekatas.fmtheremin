@@ -5,10 +5,6 @@
  *      Author: satake
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <jni.h>
 #include <errno.h>
 
@@ -45,25 +41,36 @@ static SLObjectItf bqPlayerObject = NULL;
 static SLPlayItf bqPlayerPlay;
 static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 
-static double freqNum = 0.0;
-static double ampNum = 0.0;
-static double phase;
-#define PI 3.141592
+// myFM Object
+static myFM* fm = NULL;
 
+/**
+ * Our saved state data.
+ */
+struct saved_state {
+    float angle;
+    int32_t x;
+    int32_t y;
+};
 
-void tone_dynamic2(){
-#if 0
-    unsigned i;
-    for (i = 0; i < OUTPUT_FRAMES; ++i) {
-        phase += 22050*freqNum / 44100.0;
-        phase = (phase >= 1.0) ? -1 : phase;
-        outputBuffer[i] = (phase < 0) ? 0 : 32768*ampNum;
-    }
-#endif
-    gen_fm(freqNum * 10000);
-    nextBuffer = outputBuffer;
-    nextSize = sizeof(outputBuffer);
-}
+/**
+ * Shared state for our app.
+ */
+struct engine {
+    struct android_app* app;
+
+    ASensorManager* sensorManager;
+    const ASensor* accelerometerSensor;
+    ASensorEventQueue* sensorEventQueue;
+
+    int animating;
+    EGLDisplay display;
+    EGLSurface surface;
+    EGLContext context;
+    int32_t width;
+    int32_t height;
+    struct saved_state state;
+};
 
 // this callback handler is called every time a buffer finishes playing
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
@@ -71,10 +78,10 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
     assert(bq == bqPlayerBufferQueue);
     assert(NULL == context);
 
-    tone_dynamic2();
+    fm->setTone();
 
     SLresult result;
-    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
+    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, fm->nextBuffer, fm->nextSize);
     assert(SL_RESULT_SUCCESS == result);
 
     //LOGI("call bqPlayerCallback");
@@ -156,32 +163,11 @@ void createBufferQueueAudioPlayer()
 void setStop()
 {
     SLresult result;
-    nextBuffer = NULL;
-    nextSize = 0;
-    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
+    fm->nextBuffer = NULL;
+    fm->nextSize = 0;
+    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, fm->nextBuffer, fm->nextSize);
     result = (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PAUSED);
     assert(SL_RESULT_SUCCESS == result);
-}
-
-void setTone()
-{
-    SLresult result;
-    tone_dynamic2();
-    nextBuffer = outputBuffer;
-    nextSize = sizeof(outputBuffer);
-    //result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
-
-    LOGI("call setTone");
-}
-
-void setFreq(double count)
-{
-    freqNum = count;
-}
-
-void setAmp(double count)
-{
-    ampNum = count;
 }
 
 void shutdown()
@@ -208,35 +194,6 @@ void shutdown()
     }
 
 }
-
-
-/**
- * Our saved state data.
- */
-struct saved_state {
-    float angle;
-    int32_t x;
-    int32_t y;
-};
-
-/**
- * Shared state for our app.
- */
-struct engine {
-    struct android_app* app;
-
-    ASensorManager* sensorManager;
-    const ASensor* accelerometerSensor;
-    ASensorEventQueue* sensorEventQueue;
-
-    int animating;
-    EGLDisplay display;
-    EGLSurface surface;
-    EGLContext context;
-    int32_t width;
-    int32_t height;
-    struct saved_state state;
-};
 
 /**
  * Initialize an EGL context for the current display.
@@ -350,12 +307,14 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     struct engine* engine = (struct engine*)app->userData;
     double freq;
 
-    if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION &&
-    	AInputEvent_getSource(event) == AINPUT_SOURCE_TOUCHSCREEN)
+    //if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION &&
+    //	AInputEvent_getSource(event) == AINPUT_SOURCE_TOUCHSCREEN)
+    if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION)
     {
     	int32_t action = AMotionEvent_getAction(event);
-    	switch (action) {
+    	switch (action & AMOTION_EVENT_ACTION_MASK) {
     		case AMOTION_EVENT_ACTION_MOVE:
+#if 0
     	    	if (keyon == 0) {
     	            tone_dynamic2();
     	    		SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
@@ -371,18 +330,37 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
 
     			LOGI("state.x:%f",(double)engine->state.x);
     			LOGI("Freq:%f", freq);
-
+#endif
     			return 1;
-    		case AMOTION_EVENT_ACTION_UP:
-    		    nextBuffer = NULL;
-    		    nextSize = 0;
-	    		SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
-
-    		    keyon = 0;
-
-    			LOGI("action up");
+    		case AMOTION_EVENT_ACTION_POINTER_DOWN:
+    			LOGI("action pointer down");
     			return 1;
-        }
+    		case AMOTION_EVENT_ACTION_DOWN:
+    		    fm->nextBuffer = NULL;
+    		    fm->nextSize = 0;
+	    		//SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
+
+    		    LOGI("keyon:%d", fm->keyon);
+
+    		    fm->keyon = 0;
+
+    		    engine->animating = 1;
+    			engine->state.x = AMotionEvent_getX(event, 0);
+    			engine->state.y = AMotionEvent_getY(event, 0);
+
+    			freq = (double)(engine->state.x/10)/engine->width;
+    			fm->setFreq(freq);
+    			fm->setAmp((double)engine->state.y/engine->height);
+
+    			LOGI("state.x:%f",(double)engine->state.x);
+    			LOGI("Freq:%f", freq);
+
+    			fm->setTone();
+	    		SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, fm->nextBuffer, fm->nextSize);
+
+    			LOGI("action down");
+    			return 1;
+    	}
     }
 
     return 0;
@@ -406,8 +384,8 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
                 engine_init_display(engine);
                 engine_draw_frame(engine);
 
-                setFreq(0);
-                setAmp(0);
+                fm->setFreq(0);
+                fm->setAmp(0);
                 createEngine();
                 createBufferQueueAudioPlayer();
             }
@@ -472,6 +450,9 @@ void android_main(struct android_app* state) {
         engine.state = *(struct saved_state*)state->savedState;
     }
 
+    // create myFM instance
+    fm = new myFM();
+
     // loop waiting for stuff to do.
 
     while (1) {
@@ -497,9 +478,11 @@ void android_main(struct android_app* state) {
                     ASensorEvent event;
                     while (ASensorEventQueue_getEvents(engine.sensorEventQueue,
                             &event, 1) > 0) {
-                        LOGI("accelerometer: x=%f y=%f z=%f",
+                        /*
+                    	LOGI("accelerometer: x=%f y=%f z=%f",
                                 event.acceleration.x, event.acceleration.y,
                                 event.acceleration.z);
+                        */
                     }
                 }
             }
@@ -524,9 +507,4 @@ void android_main(struct android_app* state) {
         }
     }
 }
-
-#ifdef __cplusplus
-}
-#endif
-
 
