@@ -27,7 +27,7 @@
 #include <SLES/OpenSLES.h>
 #include "SLES/OpenSLES_Android.h"
 
-#include "fm.h"
+#include "fm.hpp"
 
 // engine interfaces
 static SLObjectItf engineObject = NULL;
