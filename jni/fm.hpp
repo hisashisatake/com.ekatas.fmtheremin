@@ -2,7 +2,7 @@
  * fm.h
  *
  *  Created on: 2013/03/13
- *      Author: satake
+ *      Author: hisashisatake
  */
 
 #ifndef FM_H_
@@ -37,7 +37,7 @@ public:
 	double ampNum;
 	//static double phase;
 
-	void fm()
+	myFM()
 	{
 		keyon = 0;
 		freqNum = 0.0;

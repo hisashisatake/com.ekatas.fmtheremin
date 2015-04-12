@@ -27,8 +27,10 @@
 #include <SLES/OpenSLES.h>
 #include "SLES/OpenSLES_Android.h"
 
+#include "playSimpleBufferQueue.hpp"
 #include "fm.hpp"
 
+#if 0
 // engine interfaces
 static SLObjectItf engineObject = NULL;
 static SLEngineItf engineEngine;
@@ -40,7 +42,10 @@ static SLObjectItf outputMixObject = NULL;
 static SLObjectItf bqPlayerObject = NULL;
 static SLPlayItf bqPlayerPlay;
 static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
+#endif
 
+// playSimpleBufferQueue Class
+static playSimpleBufferQueue* q = NULL;
 // myFM Object
 static myFM* fm = NULL;
 
@@ -72,6 +77,7 @@ struct engine {
     struct saved_state state;
 };
 
+#if 0
 // this callback handler is called every time a buffer finishes playing
 void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 {
@@ -194,6 +200,7 @@ void shutdown()
     }
 
 }
+#endif
 
 /**
  * Initialize an EGL context for the current display.
@@ -355,8 +362,8 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     			LOGI("state.x:%f",(double)engine->state.x);
     			LOGI("Freq:%f", freq);
 
-    			fm->setTone();
-	    		SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, fm->nextBuffer, fm->nextSize);
+    			playSimpleBufferQueue::soundGenerator->setTone();
+	    		SLresult result = (q->*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, q->nextBuffer, q->nextSize);
 
     			LOGI("action down");
     			return 1;
@@ -386,15 +393,15 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
 
                 fm->setFreq(0);
                 fm->setAmp(0);
-                createEngine();
-                createBufferQueueAudioPlayer();
+                q->createEngine();
+                q->createBufferQueueAudioPlayer();
             }
             break;
         case APP_CMD_TERM_WINDOW:
             // The window is being hidden or closed, clean it up.
             engine_term_display(engine);
-            setStop();
-            shutdown();
+            q->setStop();
+            q->shutdown();
             break;
         case APP_CMD_GAINED_FOCUS:
             // When our app gains focus, we start monitoring the accelerometer.
@@ -451,7 +458,10 @@ void android_main(struct android_app* state) {
     }
 
     // create myFM instance
-    fm = new myFM();
+    //fm = new myFM();
+    // craete playSimpleBufferQueue instance
+    playSimpleBufferQueue::soundGenerator = new myFM();
+    q = new playSimpleBufferQueue();
 
     // loop waiting for stuff to do.
 
