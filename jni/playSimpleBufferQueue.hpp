@@ -72,7 +72,8 @@ private:
 	// buffer queue player interfaces
 	SLObjectItf bqPlayerObject;
 	SLPlayItf bqPlayerPlay;
-	static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
+	SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
+	eventSender* sender;
 
 public:
 	static myFM* soundGenerator;
@@ -83,6 +84,8 @@ public:
 		engineObject = NULL;
 		outputMixObject = NULL;
 		bqPlayerBufferQueue = NULL;
+		sender = new eventSender();
+        sender->SetListener(this, &playSimpleBufferQueue::bqPlayerCallback);
 	}
 
 	void setSoundGenerator()
@@ -91,7 +94,7 @@ public:
 	}
 
 	// this callback handler is called every time a buffer finishes playing
-	static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+	void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
 	{
 	    assert(bq == bqPlayerBufferQueue);
 	    assert(NULL == context);
