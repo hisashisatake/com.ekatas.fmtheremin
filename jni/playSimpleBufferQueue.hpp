@@ -16,50 +16,6 @@
 
 #include "fm.hpp"
 
-// イベントリスナインターフェース
-class listenerBase {
-public:
-    // イベント
-    virtual void invoke(SLAndroidSimpleBufferQueueItf caller, void *pContext) = 0;
-    virtual ~listenerBase() = 0;
-};
-
-// メソッドのポインタをイベントリスナとするためのテンプレートクラス
-template <class T>
-class eventListener : listenerBase {
-public:
-    // コンストラクタ
-    eventListener(T* obj, void (T::*callback)(SLAndroidSimpleBufferQueueItf, void *)){
-        this->obj = obj;
-        this->callback = callback;
-    };
-
-    // イベント
-    virtual void invoke(SLAndroidSimpleBufferQueueItf caller, void *pContext){
-        (obj->*callback)(caller, pContext);
-    };
-private:
-    T* obj;
-    void (T::*callback)(SLAndroidSimpleBufferQueueItf, void *);
-};
-
-// イベント送信側
-class eventSender{
-public:
-    // コールバックメソッドを登録
-    template <class T>
-    void setListener(T* obj, void (T::*callback)(SLAndroidSimpleBufferQueueItf, void *)){
-        listener = new eventListener<T>(obj, callback);
-    };
-
-    // イベントを発生させる
-    void Fire(SLAndroidSimpleBufferQueueItf caller, void *pContext){
-        listener->invoke(caller, pContext);
-    }
-private:
-    listenerBase* listener;
-};
-
 class playSimpleBufferQueue {
 private:
 	// engine interfaces
@@ -73,10 +29,9 @@ private:
 	SLObjectItf bqPlayerObject;
 	SLPlayItf bqPlayerPlay;
 	SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
-	eventSender* sender;
 
 public:
-	static myFM* soundGenerator;
+	myFM* soundGenerator;
 
 	playSimpleBufferQueue()
 	{
@@ -84,8 +39,7 @@ public:
 		engineObject = NULL;
 		outputMixObject = NULL;
 		bqPlayerBufferQueue = NULL;
-		sender = new eventSender();
-        sender->SetListener(this, &playSimpleBufferQueue::bqPlayerCallback);
+		soundGenerator = NULL;
 	}
 
 	void setSoundGenerator()
@@ -93,16 +47,24 @@ public:
 
 	}
 
-	// this callback handler is called every time a buffer finishes playing
-	void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+	static playSimpleBufferQueue* getInstance()
 	{
+		static playSimpleBufferQueue instance;
+		return &instance;
+	}
+
+	// this callback handler is called every time a buffer finishes playing
+	static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+	{
+		playSimpleBufferQueue *pq = playSimpleBufferQueue::getInstance();
+
 	    assert(bq == bqPlayerBufferQueue);
 	    assert(NULL == context);
 
-	    soundGenerator->setTone();
+	    pq->soundGenerator->setTone();
 
 	    SLresult result;
-	    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, soundGenerator->nextBuffer, soundGenerator->nextSize);
+	    result = (*pq->bqPlayerBufferQueue)->Enqueue(pq->bqPlayerBufferQueue, pq->soundGenerator->nextBuffer, pq->soundGenerator->nextSize);
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    //LOGI("call bqPlayerCallback");
@@ -120,7 +82,6 @@ public:
 
 	void shutdown()
 	{
-
 	    // destroy buffer queue audio player object, and invalidate all associated interfaces
 	    if (bqPlayerObject != NULL) {
 	        (*bqPlayerObject)->Destroy(bqPlayerObject);
@@ -140,8 +101,8 @@ public:
 	        engineObject = NULL;
 	        engineEngine = NULL;
 	    }
-
 	}
+
 public:
 	void createEngine()
 	{
@@ -169,7 +130,6 @@ public:
 	    result = (*outputMixObject)->Realize(outputMixObject, SL_BOOLEAN_FALSE);
 	    assert(SL_RESULT_SUCCESS == result);
 	}
-
 
 	// create buffer queue audio player
 	void createBufferQueueAudioPlayer()

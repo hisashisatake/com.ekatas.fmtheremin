@@ -47,7 +47,7 @@ static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 // playSimpleBufferQueue Class
 static playSimpleBufferQueue* q = NULL;
 // myFM Object
-static myFM* fm = NULL;
+//static myFM* fm = NULL;
 
 /**
  * Our saved state data.
@@ -343,27 +343,28 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     			LOGI("action pointer down");
     			return 1;
     		case AMOTION_EVENT_ACTION_DOWN:
-    		    fm->nextBuffer = NULL;
-    		    fm->nextSize = 0;
+    		    q->soundGenerator->nextBuffer = NULL;
+    		    q->soundGenerator->nextSize = 0;
 	    		//SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
 
-    		    LOGI("keyon:%d", fm->keyon);
+    		    LOGI("keyon:%d", q->soundGenerator->keyon);
 
-    		    fm->keyon = 0;
+    		    q->soundGenerator->keyon = 0;
 
     		    engine->animating = 1;
     			engine->state.x = AMotionEvent_getX(event, 0);
     			engine->state.y = AMotionEvent_getY(event, 0);
 
     			freq = (double)(engine->state.x/10)/engine->width;
-    			fm->setFreq(freq);
-    			fm->setAmp((double)engine->state.y/engine->height);
+    			q->soundGenerator->setFreq(freq);
+    			q->soundGenerator->setAmp((double)engine->state.y/engine->height);
 
     			LOGI("state.x:%f",(double)engine->state.x);
     			LOGI("Freq:%f", freq);
 
-    			playSimpleBufferQueue::soundGenerator->setTone();
-	    		SLresult result = (q->*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, q->nextBuffer, q->nextSize);
+    			//q->soundGenerator->setTone();
+	    		//SLresult result = (q->*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, q->soundGenerator->nextBuffer, q->soundGenerator->nextSize);
+    			playSimpleBufferQueue::bqPlayerCallback(NULL, NULL);
 
     			LOGI("action down");
     			return 1;
@@ -391,8 +392,8 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
                 engine_init_display(engine);
                 engine_draw_frame(engine);
 
-                fm->setFreq(0);
-                fm->setAmp(0);
+                q->soundGenerator->setFreq(0);
+                q->soundGenerator->setAmp(0);
                 q->createEngine();
                 q->createBufferQueueAudioPlayer();
             }
@@ -460,8 +461,7 @@ void android_main(struct android_app* state) {
     // create myFM instance
     //fm = new myFM();
     // craete playSimpleBufferQueue instance
-    playSimpleBufferQueue::soundGenerator = new myFM();
-    q = new playSimpleBufferQueue();
+    q = playSimpleBufferQueue::getInstance();
 
     // loop waiting for stuff to do.
 
