@@ -14,9 +14,11 @@
 #include <SLES/OpenSLES.h>
 #include "SLES/OpenSLES_Android.h"
 
+#include "threadLocker.hpp"
 #include "fm.hpp"
 
-class playSimpleBufferQueue {
+
+class playSimpleBufferQueue : threadLocker {
 private:
 	// engine interfaces
 	SLObjectItf engineObject;
@@ -54,17 +56,16 @@ public:
 	}
 
 	// this callback handler is called every time a buffer finishes playing
-	static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
+	static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void* context)
 	{
-		playSimpleBufferQueue *pq = playSimpleBufferQueue::getInstance();
+	    playSimpleBufferQueue* p = (playSimpleBufferQueue*)context;
 
-	    assert(bq == bqPlayerBufferQueue);
-	    assert(NULL == context);
+	    assert(bq == p->bqPlayerBufferQueue);
 
-	    pq->soundGenerator->setTone();
+	    p->soundGenerator->setTone();
 
 	    SLresult result;
-	    result = (*pq->bqPlayerBufferQueue)->Enqueue(pq->bqPlayerBufferQueue, pq->soundGenerator->nextBuffer, pq->soundGenerator->nextSize);
+	    result = (*p->bqPlayerBufferQueue)->Enqueue(p->bqPlayerBufferQueue, p->soundGenerator->nextBuffer, p->soundGenerator->nextSize);
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    //LOGI("call bqPlayerCallback");
@@ -168,7 +169,7 @@ public:
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    // register callback on the buffer queue
-	    result = (*bqPlayerBufferQueue)->RegisterCallback(bqPlayerBufferQueue, &bqPlayerCallback, NULL);
+	    result = (*bqPlayerBufferQueue)->RegisterCallback(bqPlayerBufferQueue, &playSimpleBufferQueue::bqPlayerCallback, this);
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    // set the player's state to playing

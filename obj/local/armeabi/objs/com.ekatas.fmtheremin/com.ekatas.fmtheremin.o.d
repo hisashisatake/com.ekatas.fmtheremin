@@ -71,7 +71,7 @@ obj/local/armeabi/objs/com.ekatas.fmtheremin/com.ekatas.fmtheremin.o: \
  /Applications/adt-bundle-mac-x86_64-20131030/android-ndk-r9b/platforms/android-17/arch-arm/usr/include/SLES/OpenSLES_Android.h \
  /Applications/adt-bundle-mac-x86_64-20131030/android-ndk-r9b/platforms/android-17/arch-arm/usr/include/SLES/OpenSLES_AndroidConfiguration.h \
  /Applications/adt-bundle-mac-x86_64-20131030/android-ndk-r9b/platforms/android-17/arch-arm/usr/include/SLES/OpenSLES_AndroidMetadata.h \
- jni/playSimpleBufferQueue.hpp jni/fm.hpp \
+ jni/playSimpleBufferQueue.hpp jni/threadLocker.hpp jni/fm.hpp \
  /Applications/adt-bundle-mac-x86_64-20131030/android-ndk-r9b/platforms/android-17/arch-arm/usr/include/stdio.h
 
 /Applications/adt-bundle-mac-x86_64-20131030/android-ndk-r9b/platforms/android-17/arch-arm/usr/include/jni.h:
@@ -217,6 +217,8 @@ obj/local/armeabi/objs/com.ekatas.fmtheremin/com.ekatas.fmtheremin.o: \
 /Applications/adt-bundle-mac-x86_64-20131030/android-ndk-r9b/platforms/android-17/arch-arm/usr/include/SLES/OpenSLES_AndroidMetadata.h:
 
 jni/playSimpleBufferQueue.hpp:
+
+jni/threadLocker.hpp:
 
 jni/fm.hpp:
 
