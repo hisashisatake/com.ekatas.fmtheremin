@@ -32,8 +32,9 @@ private:
 	SLPlayItf bqPlayerPlay;
 	SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 
-public:
 	myFM* soundGenerator;
+
+public:
 
 	playSimpleBufferQueue()
 	{
@@ -41,12 +42,19 @@ public:
 		engineObject = NULL;
 		outputMixObject = NULL;
 		bqPlayerBufferQueue = NULL;
-		soundGenerator = NULL;
+		engineEngine = NULL;
+		bqPlayerPlay = NULL;
+		soundGenerator = new myFM();
 	}
 
-	void setSoundGenerator()
+	void* getSoundGenerator()
 	{
+		return (void*)soundGenerator;
+	}
 
+	void setSoundGenerator(void* sg)
+	{
+		soundGenerator = (myFM*)sg;
 	}
 
 	static playSimpleBufferQueue* getInstance()
@@ -58,17 +66,29 @@ public:
 	// this callback handler is called every time a buffer finishes playing
 	static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void* context)
 	{
-	    playSimpleBufferQueue* p = (playSimpleBufferQueue*)context;
+	    playSimpleBufferQueue* q = (playSimpleBufferQueue*)context;
 
-	    assert(bq == p->bqPlayerBufferQueue);
+	    assert(bq == q->bqPlayerBufferQueue);
 
-	    p->soundGenerator->setTone();
+	    q->soundGenerator->setTone();
 
 	    SLresult result;
-	    result = (*p->bqPlayerBufferQueue)->Enqueue(p->bqPlayerBufferQueue, p->soundGenerator->nextBuffer, p->soundGenerator->nextSize);
+	    result = (*q->bqPlayerBufferQueue)->Enqueue(q->bqPlayerBufferQueue,
+	    											q->soundGenerator->nextBuffer,
+	    											q->soundGenerator->nextSize);
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    //LOGI("call bqPlayerCallback");
+	}
+
+	void enqueue()
+	{
+		soundGenerator->setTone();
+
+	    SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue,
+	    												  soundGenerator->nextBuffer,
+	    												  soundGenerator->nextSize);
+	    assert(SL_RESULT_SUCCESS == result);
 	}
 
 	void setStop()
@@ -104,7 +124,6 @@ public:
 	    }
 	}
 
-public:
 	void createEngine()
 	{
 	    SLresult result;

@@ -42,6 +42,10 @@ public:
 		keyon = 0;
 		freqNum = 0.0;
 		ampNum = 0.0;
+		fmCount = 0;
+		nextBuffer = NULL;
+		nextSize = 0;
+		nextCount = 0;
 	}
 
 	void gen_fm(double fc)
