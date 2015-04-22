@@ -15,9 +15,6 @@
 #include <android/log.h>
 #include <android_native_app_glue.h>
 
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
-
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
@@ -30,24 +27,8 @@
 #include "playSimpleBufferQueue.hpp"
 #include "fm.hpp"
 
-#if 0
-// engine interfaces
-static SLObjectItf engineObject = NULL;
-static SLEngineItf engineEngine;
-
-// output mix interfaces
-static SLObjectItf outputMixObject = NULL;
-
-// buffer queue player interfaces
-static SLObjectItf bqPlayerObject = NULL;
-static SLPlayItf bqPlayerPlay;
-static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
-#endif
-
 // playSimpleBufferQueue Class
 static playSimpleBufferQueue* q = NULL;
-// myFM Object
-//static myFM* fm = NULL;
 
 /**
  * Our saved state data.
@@ -76,131 +57,6 @@ struct engine {
     int32_t height;
     struct saved_state state;
 };
-
-#if 0
-// this callback handler is called every time a buffer finishes playing
-void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *context)
-{
-    assert(bq == bqPlayerBufferQueue);
-    assert(NULL == context);
-
-    fm->setTone();
-
-    SLresult result;
-    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, fm->nextBuffer, fm->nextSize);
-    assert(SL_RESULT_SUCCESS == result);
-
-    //LOGI("call bqPlayerCallback");
-}
-
-void createEngine()
-{
-    SLresult result;
-
-    // create engine
-    result = slCreateEngine(&engineObject, 0, NULL, 0, NULL, NULL);
-    assert(SL_RESULT_SUCCESS == result);
-
-    // realize the engine
-    result = (*engineObject)->Realize(engineObject, SL_BOOLEAN_FALSE);
-    assert(SL_RESULT_SUCCESS == result);
-
-    // get the engine interface, which is needed in order to create other objects
-    result = (*engineObject)->GetInterface(engineObject, SL_IID_ENGINE, &engineEngine);
-    assert(SL_RESULT_SUCCESS == result);
-
-    // create output mix, with environmental reverb specified as a non-required interface
-    const SLInterfaceID ids[1] = {SL_IID_ENVIRONMENTALREVERB};
-    const SLboolean req[1] = {SL_BOOLEAN_FALSE};
-    result = (*engineEngine)->CreateOutputMix(engineEngine, &outputMixObject, 1, ids, req);
-    assert(SL_RESULT_SUCCESS == result);
-
-    // realize the output mix
-    result = (*outputMixObject)->Realize(outputMixObject, SL_BOOLEAN_FALSE);
-    assert(SL_RESULT_SUCCESS == result);
-}
-
-
-// create buffer queue audio player
-void createBufferQueueAudioPlayer()
-{
-    SLresult result;
-
-    // configure audio source
-    SLDataLocator_AndroidSimpleBufferQueue loc_bufq = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
-    SLDataFormat_PCM format_pcm = {SL_DATAFORMAT_PCM, 1, SL_SAMPLINGRATE_44_1,
-        SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
-        SL_SPEAKER_FRONT_CENTER, SL_BYTEORDER_LITTLEENDIAN};
-    SLDataSource audioSrc = {&loc_bufq, &format_pcm};
-
-    // configure audio sink
-    SLDataLocator_OutputMix loc_outmix = {SL_DATALOCATOR_OUTPUTMIX, outputMixObject};
-    SLDataSink audioSnk = {&loc_outmix, NULL};
-
-    // create audio player
-    const SLInterfaceID ids[2] = {SL_IID_BUFFERQUEUE, SL_IID_EFFECTSEND};
-    const SLboolean req[2] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE};
-    result = (*engineEngine)->CreateAudioPlayer(engineEngine, &bqPlayerObject, &audioSrc, &audioSnk,
-            2, ids, req);
-    assert(SL_RESULT_SUCCESS == result);
-
-    // realize the player
-    result = (*bqPlayerObject)->Realize(bqPlayerObject, SL_BOOLEAN_FALSE);
-    assert(SL_RESULT_SUCCESS == result);
-
-    // get the play interface
-    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_PLAY, &bqPlayerPlay);
-    assert(SL_RESULT_SUCCESS == result);
-
-    // get the buffer queue interface
-    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_BUFFERQUEUE,
-            &bqPlayerBufferQueue);
-    assert(SL_RESULT_SUCCESS == result);
-
-    // register callback on the buffer queue
-    result = (*bqPlayerBufferQueue)->RegisterCallback(bqPlayerBufferQueue, bqPlayerCallback, NULL);
-    assert(SL_RESULT_SUCCESS == result);
-
-    // set the player's state to playing
-    result = (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PLAYING);
-    assert(SL_RESULT_SUCCESS == result);
-}
-
-void setStop()
-{
-    SLresult result;
-    fm->nextBuffer = NULL;
-    fm->nextSize = 0;
-    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, fm->nextBuffer, fm->nextSize);
-    result = (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PAUSED);
-    assert(SL_RESULT_SUCCESS == result);
-}
-
-void shutdown()
-{
-
-    // destroy buffer queue audio player object, and invalidate all associated interfaces
-    if (bqPlayerObject != NULL) {
-        (*bqPlayerObject)->Destroy(bqPlayerObject);
-        bqPlayerObject = NULL;
-        bqPlayerPlay = NULL;
-        bqPlayerBufferQueue = NULL;
-    }
-    // destroy output mix object, and invalidate all associated interfaces
-    if (outputMixObject != NULL) {
-        (*outputMixObject)->Destroy(outputMixObject);
-        outputMixObject = NULL;
-    }
-
-    // destroy engine object, and invalidate all associated interfaces
-    if (engineObject != NULL) {
-        (*engineObject)->Destroy(engineObject);
-        engineObject = NULL;
-        engineEngine = NULL;
-    }
-
-}
-#endif
 
 /**
  * Initialize an EGL context for the current display.
@@ -321,42 +177,22 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     	int32_t action = AMotionEvent_getAction(event);
     	switch (action & AMOTION_EVENT_ACTION_MASK) {
     		case AMOTION_EVENT_ACTION_MOVE:
-#if 0
-    	    	if (keyon == 0) {
-    	            tone_dynamic2();
-    	    		SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
-    	    	}
-
-    			engine->animating = 1;
-    			engine->state.x = AMotionEvent_getX(event, 0);
-    			engine->state.y = AMotionEvent_getY(event, 0);
-
-    			freq = (double)(engine->state.x/10)/engine->width;
-    			setFreq(freq);
-    			setAmp((double)engine->state.y/engine->height);
-
-    			LOGI("state.x:%f",(double)engine->state.x);
-    			LOGI("Freq:%f", freq);
-#endif
+    			LOGI("action move");
     			return 1;
     		case AMOTION_EVENT_ACTION_POINTER_DOWN:
     			LOGI("action pointer down");
     			return 1;
     		case AMOTION_EVENT_ACTION_DOWN:
-    		    ((myFM*)q->getSoundGenerator())->nextBuffer = NULL;
-    		    ((myFM*)q->getSoundGenerator())->nextSize = 0;
-	    		//SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, nextBuffer, nextSize);
-
-    		    LOGI("keyon:%d", ((myFM*)q->getSoundGenerator())->keyon);
-
-    		    ((myFM*)q->getSoundGenerator())->keyon = 0;
-
     		    engine->animating = 1;
     			engine->state.x = AMotionEvent_getX(event, 0);
     			engine->state.y = AMotionEvent_getY(event, 0);
 
     			freq = (double)(engine->state.x/10)/engine->width;
-    			((myFM*)q->getSoundGenerator())->setFreq(freq);
+
+    		    LOGI("keyon:%d", q->getKeyOn());
+
+    		    q->keyOff();
+    		    ((myFM*)q->getSoundGenerator())->setFreq(freq);
     			((myFM*)q->getSoundGenerator())->setAmp((double)engine->state.y/engine->height);
 
     			LOGI("state.x:%f",(double)engine->state.x);
@@ -394,8 +230,6 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
         case APP_CMD_TERM_WINDOW:
             // The window is being hidden or closed, clean it up.
             engine_term_display(engine);
-            q->setStop();
-            q->shutdown();
             break;
         case APP_CMD_GAINED_FOCUS:
             // When our app gains focus, we start monitoring the accelerometer.
@@ -451,14 +285,8 @@ void android_main(struct android_app* state) {
         engine.state = *(struct saved_state*)state->savedState;
     }
 
-    // create myFM instance
-    //fm = new myFM();
     // craete playSimpleBufferQueue instance
     q = playSimpleBufferQueue::getInstance();
-    ((myFM*)q->getSoundGenerator())->setFreq(0);
-    ((myFM*)q->getSoundGenerator())->setAmp(0);
-    q->createEngine();
-    q->createBufferQueueAudioPlayer();
 
     // loop waiting for stuff to do.
 
@@ -497,7 +325,7 @@ void android_main(struct android_app* state) {
             // Check if we are exiting.
             if (state->destroyRequested != 0) {
                 engine_term_display(&engine);
-                return;
+                goto TERMINATE;
             }
         }
 
@@ -513,5 +341,13 @@ void android_main(struct android_app* state) {
             engine_draw_frame(&engine);
         }
     }
+
+TERMINATE:
+	LOGI("goto TERMINATE");
+	q->terminate();
+	if (q)
+	{
+		delete q;
+	}
 }
 

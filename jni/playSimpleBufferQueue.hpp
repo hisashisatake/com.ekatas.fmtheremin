@@ -14,6 +14,9 @@
 #include <SLES/OpenSLES.h>
 #include "SLES/OpenSLES_Android.h"
 
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
+#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
+
 #include "threadLocker.hpp"
 #include "fm.hpp"
 
@@ -35,9 +38,11 @@ private:
 	myFM* soundGenerator;
 
 public:
-
+	// Constructor
 	playSimpleBufferQueue()
 	{
+		createThreadLock();
+
 		bqPlayerObject = NULL;
 		engineObject = NULL;
 		outputMixObject = NULL;
@@ -45,18 +50,16 @@ public:
 		engineEngine = NULL;
 		bqPlayerPlay = NULL;
 		soundGenerator = new myFM();
+		initialize();
 	}
 
-	void* getSoundGenerator()
+	// Destructor
+	virtual ~playSimpleBufferQueue()
 	{
-		return (void*)soundGenerator;
+	    LOGI("playSImpleBufferQueue destructor");
 	}
 
-	void setSoundGenerator(void* sg)
-	{
-		soundGenerator = (myFM*)sg;
-	}
-
+	// get Singleton instance
 	static playSimpleBufferQueue* getInstance()
 	{
 		static playSimpleBufferQueue instance;
@@ -66,9 +69,17 @@ public:
 	// this callback handler is called every time a buffer finishes playing
 	static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void* context)
 	{
-	    playSimpleBufferQueue* q = (playSimpleBufferQueue*)context;
+		if (bq == NULL || context == NULL)
+		{
+			LOGI("context is destroied");
+			return;
+		}
+
+		playSimpleBufferQueue* q = (playSimpleBufferQueue*)context;
 
 	    assert(bq == q->bqPlayerBufferQueue);
+
+	    q->notifyThreadLock();
 
 	    q->soundGenerator->setTone();
 
@@ -81,14 +92,61 @@ public:
 	    //LOGI("call bqPlayerCallback");
 	}
 
+	void initialize()
+	{
+	    soundGenerator->setFreq(0);
+	    soundGenerator->setAmp(0);
+	    createEngine();
+	    createBufferQueueAudioPlayer();
+	}
+
+	void terminate()
+	{
+	    LOGI("playSImpleBufferQueue terminate");
+
+	    waitThreadLock();
+	    destroyThreadLock();
+
+	    setStop();
+	    LOGI("playSImpleBufferQueue setStop");
+        shutdown();
+	    LOGI("playSImpleBufferQueue shutdown");
+
+	    delete soundGenerator;
+	}
+
+	void* getSoundGenerator()
+	{
+		return (void*)soundGenerator;
+	}
+
+	void setSoundGenerator(void* sg)
+	{
+		soundGenerator = (myFM*)sg;
+	}
+
 	void enqueue()
 	{
+		//waitThreadLock();
 		soundGenerator->setTone();
 
 	    SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue,
 	    												  soundGenerator->nextBuffer,
 	    												  soundGenerator->nextSize);
 	    assert(SL_RESULT_SUCCESS == result);
+	}
+
+	void keyOff()
+	{
+		waitThreadLock();
+	    soundGenerator->nextBuffer = NULL;
+	    soundGenerator->nextSize = 0;
+		soundGenerator->keyon = 0;
+	}
+
+	int getKeyOn()
+	{
+		return soundGenerator->keyon;
 	}
 
 	void setStop()
@@ -157,10 +215,15 @@ public:
 	    SLresult result;
 
 	    // configure audio source
-	    SLDataLocator_AndroidSimpleBufferQueue loc_bufq = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
-	    SLDataFormat_PCM format_pcm = {SL_DATAFORMAT_PCM, 1, SL_SAMPLINGRATE_44_1,
-	        SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
-	        SL_SPEAKER_FRONT_CENTER, SL_BYTEORDER_LITTLEENDIAN};
+	    SLDataLocator_AndroidSimpleBufferQueue loc_bufq = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE,
+	    												   2};
+	    SLDataFormat_PCM format_pcm = {SL_DATAFORMAT_PCM,
+	    							   1,
+	    							   SL_SAMPLINGRATE_44_1,
+	    							   SL_PCMSAMPLEFORMAT_FIXED_16,
+	    							   SL_PCMSAMPLEFORMAT_FIXED_16,
+	    							   SL_SPEAKER_FRONT_CENTER,
+	    							   SL_BYTEORDER_LITTLEENDIAN};
 	    SLDataSource audioSrc = {&loc_bufq, &format_pcm};
 
 	    // configure audio sink
@@ -168,27 +231,42 @@ public:
 	    SLDataSink audioSnk = {&loc_outmix, NULL};
 
 	    // create audio player
-	    const SLInterfaceID ids[2] = {SL_IID_BUFFERQUEUE, SL_IID_EFFECTSEND};
-	    const SLboolean req[2] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE};
-	    result = (*engineEngine)->CreateAudioPlayer(engineEngine, &bqPlayerObject, &audioSrc, &audioSnk,
-	            2, ids, req);
+	    const SLInterfaceID ids[2] = {SL_IID_BUFFERQUEUE,
+	    		                      SL_IID_EFFECTSEND};
+	    const SLboolean req[2]     = {SL_BOOLEAN_TRUE,
+	    			                  SL_BOOLEAN_TRUE};
+	    result = (*engineEngine)->CreateAudioPlayer(engineEngine,
+	    											&bqPlayerObject,
+	    											&audioSrc,
+	    											&audioSnk,
+	    											2,
+	    											ids,
+	    											req);
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    // realize the player
-	    result = (*bqPlayerObject)->Realize(bqPlayerObject, SL_BOOLEAN_FALSE);
+	    result = (*bqPlayerObject)->Realize(bqPlayerObject,
+	    		                            SL_BOOLEAN_FALSE);
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    // get the play interface
-	    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_PLAY, &bqPlayerPlay);
+	    result = (*bqPlayerObject)->GetInterface(bqPlayerObject,
+	    		                                 SL_IID_PLAY,
+	    		                                 &bqPlayerPlay);
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    // get the buffer queue interface
-	    result = (*bqPlayerObject)->GetInterface(bqPlayerObject, SL_IID_BUFFERQUEUE,
-	            &bqPlayerBufferQueue);
+	    result = (*bqPlayerObject)->GetInterface(bqPlayerObject,
+	    					                     SL_IID_BUFFERQUEUE,
+	            								 &bqPlayerBufferQueue);
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    // register callback on the buffer queue
-	    result = (*bqPlayerBufferQueue)->RegisterCallback(bqPlayerBufferQueue, &playSimpleBufferQueue::bqPlayerCallback, this);
+	    result = (*bqPlayerBufferQueue)->RegisterCallback(bqPlayerBufferQueue,
+	    												  // callback static method
+	    												  &playSimpleBufferQueue::bqPlayerCallback,
+	    												  // context is "this"
+	    												  this);
 	    assert(SL_RESULT_SUCCESS == result);
 
 	    // set the player's state to playing
