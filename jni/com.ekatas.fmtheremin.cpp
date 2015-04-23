@@ -344,10 +344,7 @@ void android_main(struct android_app* state) {
 
 TERMINATE:
 	LOGI("goto TERMINATE");
-	q->terminate();
-	if (q)
-	{
-		delete q;
-	}
+	//q->terminate();
+	delete q;
 }
 
