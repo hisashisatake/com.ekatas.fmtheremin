@@ -22,11 +22,11 @@ typedef struct threadLock_{
 // to ensure synchronisation between callbacks and processing code
 class threadLocker
 {
-protected:
+private:
 	threadLock* p;
 
 public:
-	void createThreadLock(void)
+	void createThreadLock()
 	{
 		p = (threadLock*) malloc(sizeof(threadLock));
 		if (p == NULL)
@@ -35,12 +35,12 @@ public:
 		}
 		memset(p, 0, sizeof(threadLock));
 		if (pthread_mutex_init(&(p->m), (pthread_mutexattr_t*) NULL) != 0) {
-			free((void*) p);
+			free(p);
 			return;
 		}
 		if (pthread_cond_init(&(p->c), (pthread_condattr_t*) NULL) != 0) {
 			pthread_mutex_destroy(&(p->m));
-			free((void*) p);
+			free(p);
 			return;
 		}
 		p->s = (unsigned char) 1;
@@ -48,7 +48,6 @@ public:
 
 	void waitThreadLock()
     {
-
         pthread_mutex_lock(&(p->m));
         while (!p->s) {
             pthread_cond_wait(&(p->c), &(p->m));

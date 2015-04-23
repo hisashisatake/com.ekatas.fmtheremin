@@ -286,7 +286,7 @@ void android_main(struct android_app* state) {
     }
 
     // craete playSimpleBufferQueue instance
-    q = playSimpleBufferQueue::getInstance();
+    q = new playSimpleBufferQueue();
 
     // loop waiting for stuff to do.
 
@@ -345,9 +345,6 @@ void android_main(struct android_app* state) {
 TERMINATE:
 	LOGI("goto TERMINATE");
 	q->terminate();
-	if (q)
-	{
-		delete q;
-	}
+	delete q;
 }
 

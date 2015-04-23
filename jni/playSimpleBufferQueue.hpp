@@ -8,6 +8,7 @@
 #ifndef PLAYSIMPLEBUFFERQUEUE_HPP_
 #define PLAYSIMPLEBUFFERQUEUE_HPP_
 
+#include <unistd.h>
 #include <EGL/egl.h>
 #include <GLES/gl.h>
 // for native audio
@@ -41,8 +42,6 @@ public:
 	// Constructor
 	playSimpleBufferQueue()
 	{
-		createThreadLock();
-
 		bqPlayerObject = NULL;
 		engineObject = NULL;
 		outputMixObject = NULL;
@@ -50,6 +49,7 @@ public:
 		engineEngine = NULL;
 		bqPlayerPlay = NULL;
 		soundGenerator = new myFM();
+		createThreadLock();
 		initialize();
 	}
 
@@ -57,13 +57,9 @@ public:
 	virtual ~playSimpleBufferQueue()
 	{
 	    LOGI("playSImpleBufferQueue destructor");
-	}
 
-	// get Singleton instance
-	static playSimpleBufferQueue* getInstance()
-	{
-		static playSimpleBufferQueue instance;
-		return &instance;
+	    destroyThreadLock();
+	    delete soundGenerator;
 	}
 
 	// this callback handler is called every time a buffer finishes playing
@@ -104,15 +100,11 @@ public:
 	{
 	    LOGI("playSImpleBufferQueue terminate");
 
-	    waitThreadLock();
-	    destroyThreadLock();
-
 	    setStop();
 	    LOGI("playSImpleBufferQueue setStop");
+
         shutdown();
 	    LOGI("playSImpleBufferQueue shutdown");
-
-	    delete soundGenerator;
 	}
 
 	void* getSoundGenerator()
@@ -127,13 +119,13 @@ public:
 
 	void enqueue()
 	{
-		//waitThreadLock();
 		soundGenerator->setTone();
 
 	    SLresult result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue,
 	    												  soundGenerator->nextBuffer,
 	    												  soundGenerator->nextSize);
 	    assert(SL_RESULT_SUCCESS == result);
+	    waitThreadLock();
 	}
 
 	void keyOff()
@@ -155,9 +147,17 @@ public:
 	    soundGenerator->nextBuffer = NULL;
 	    soundGenerator->nextSize = 0;
 	    result = (*bqPlayerBufferQueue)->Enqueue(bqPlayerBufferQueue, soundGenerator->nextBuffer, soundGenerator->nextSize);
+	    LOGI("setStop: enqueue empty buffer");
+
+	    result = (*bqPlayerBufferQueue)->Clear(bqPlayerBufferQueue);
+	    LOGI("setStop: clear player buffer");
+
+	    waitThreadLock();
+
 	    result = (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PAUSED);
+	    LOGI("setStop: state change to PAUSED");
 	    assert(SL_RESULT_SUCCESS == result);
-	}
+}
 
 	void shutdown()
 	{
