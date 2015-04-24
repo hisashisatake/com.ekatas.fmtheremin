@@ -168,7 +168,7 @@ static void engine_term_display(struct engine* engine) {
  */
 static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) {
     struct engine* engine = (struct engine*)app->userData;
-    double freq;
+    //double freq;
 
     //if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION &&
     //	AInputEvent_getSource(event) == AINPUT_SOURCE_TOUCHSCREEN)
@@ -187,20 +187,15 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     			engine->state.x = AMotionEvent_getX(event, 0);
     			engine->state.y = AMotionEvent_getY(event, 0);
 
-    			freq = (double)(engine->state.x/10)/engine->width;
-
-    		    LOGI("keyon:%d", q->getKeyOn());
-
-    		    q->keyOff();
-    		    ((myFM*)q->getSoundGenerator())->setFreq(freq);
-    			((myFM*)q->getSoundGenerator())->setAmp((double)engine->state.y/engine->height);
-
-    			LOGI("state.x:%f",(double)engine->state.x);
-    			LOGI("Freq:%f", freq);
-
+    			q->keyOff();
+    		    q->setFreq((double)(engine->state.x/10)/engine->width);
+    			q->setAmp((double)engine->state.y/engine->height);
     			q->enqueue();
 
+    		    LOGI("keyon:%d", q->getKeyOn());
+    			LOGI("state.x:%f",(double)engine->state.x);
     			LOGI("action down");
+
     			return 1;
     	}
     }
@@ -286,7 +281,7 @@ void android_main(struct android_app* state) {
     }
 
     // craete playSimpleBufferQueue instance
-    q = playSimpleBufferQueue::getInstance();
+    q = new playSimpleBufferQueue();
 
     // loop waiting for stuff to do.
 
@@ -344,7 +339,7 @@ void android_main(struct android_app* state) {
 
 TERMINATE:
 	LOGI("goto TERMINATE");
-	//q->terminate();
+	q->terminate();
 	delete q;
 }
 

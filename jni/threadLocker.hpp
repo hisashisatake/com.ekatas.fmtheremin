@@ -10,6 +10,7 @@
 
 #include <pthread.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 typedef struct threadLock_{
 	pthread_mutex_t m;
@@ -22,11 +23,13 @@ typedef struct threadLock_{
 // to ensure synchronisation between callbacks and processing code
 class threadLocker
 {
-protected:
+private:
 	threadLock* p;
+	struct timeval now;
+	struct timespec timeout;
 
 public:
-	void createThreadLock(void)
+	void createThreadLock()
 	{
 		p = (threadLock*) malloc(sizeof(threadLock));
 		if (p == NULL)
@@ -35,23 +38,30 @@ public:
 		}
 		memset(p, 0, sizeof(threadLock));
 		if (pthread_mutex_init(&(p->m), (pthread_mutexattr_t*) NULL) != 0) {
-			free((void*) p);
+			free(p);
 			return;
 		}
 		if (pthread_cond_init(&(p->c), (pthread_condattr_t*) NULL) != 0) {
 			pthread_mutex_destroy(&(p->m));
-			free((void*) p);
+			free(p);
 			return;
 		}
 		p->s = (unsigned char) 1;
+
+        LOGI("pthred mutex create");
 	}
 
 	void waitThreadLock()
     {
-
         pthread_mutex_lock(&(p->m));
-        while (!p->s) {
-            pthread_cond_wait(&(p->c), &(p->m));
+
+        gettimeofday(&now, NULL);
+    	timeout.tv_sec = now.tv_sec + 5;
+    	timeout.tv_nsec = now.tv_usec * 1000;
+
+    	while (!p->s) {
+        	LOGI("pthred wait");
+            pthread_cond_timedwait(&(p->c), &(p->m), &timeout);
         }
         p->s = (unsigned char) 0;
         pthread_mutex_unlock(&(p->m));
@@ -73,6 +83,7 @@ public:
         pthread_cond_destroy(&(p->c));
         pthread_mutex_destroy(&(p->m));
         free(p);
+        LOGI("pthred mutex destroy");
     }
 };
 
