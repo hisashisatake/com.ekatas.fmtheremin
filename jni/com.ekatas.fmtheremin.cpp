@@ -8,27 +8,28 @@
 #include <jni.h>
 #include <errno.h>
 
-#include <EGL/egl.h>
-#include <GLES/gl.h>
+//#include <EGL/egl.h>
+//#include <GLES/gl.h>
 
 #include <android/sensor.h>
 #include <android/log.h>
 #include <android_native_app_glue.h>
 
 #include <stdlib.h>
-#include <math.h>
 #include <assert.h>
 #include <string.h>
 
+#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
+#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
+
 // for native audio
-#include <SLES/OpenSLES.h>
-#include "SLES/OpenSLES_Android.h"
+//#include <SLES/OpenSLES.h>
+//#include "SLES/OpenSLES_Android.h"
 
 #include "playSimpleBufferQueue.hpp"
-#include "fm.hpp"
 
 // playSimpleBufferQueue Class
-static playSimpleBufferQueue* q = NULL;
+static QueueBuffer* q = NULL;
 
 /**
  * Our saved state data.
@@ -187,7 +188,7 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     			engine->state.x = AMotionEvent_getX(event, 0);
     			engine->state.y = AMotionEvent_getY(event, 0);
 
-    			q->keyOff();
+    			q->prepareKeyOn();
     		    q->setFreq((double)(engine->state.x/10)/engine->width);
     			q->setAmp((double)engine->state.y/engine->height);
     			q->enqueue();
@@ -281,10 +282,9 @@ void android_main(struct android_app* state) {
     }
 
     // craete playSimpleBufferQueue instance
-    q = new playSimpleBufferQueue();
+    q = new QueueBuffer();
 
     // loop waiting for stuff to do.
-
     while (1) {
         // Read all pending events.
         int ident;
@@ -339,7 +339,6 @@ void android_main(struct android_app* state) {
 
 TERMINATE:
 	LOGI("goto TERMINATE");
-	q->terminate();
 	delete q;
 }
 
