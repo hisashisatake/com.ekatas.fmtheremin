@@ -181,21 +181,27 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     			LOGI("action move");
     			return 1;
     		case AMOTION_EVENT_ACTION_POINTER_DOWN:
-    			LOGI("action pointer down");
-    			return 1;
     		case AMOTION_EVENT_ACTION_DOWN:
-    		    engine->animating = 1;
+    			if (action & AMOTION_EVENT_ACTION_MASK == AMOTION_EVENT_ACTION_POINTER_DOWN)
+    			{
+    				LOGI("action pointer down");
+    			}
+    			else
+    			{
+    				LOGI("action down");
+    			}
+
+    			engine->animating = 1;
     			engine->state.x = AMotionEvent_getX(event, 0);
     			engine->state.y = AMotionEvent_getY(event, 0);
 
-    			q->prepareKeyOn();
     		    q->setFreq((double)(engine->state.x/10)/engine->width);
     			q->setAmp((double)engine->state.y/engine->height);
+    			q->prepareKeyOn();
     			q->enqueue();
 
     		    LOGI("keyon:%d", q->getKeyOn());
     			LOGI("state.x:%f",(double)engine->state.x);
-    			LOGI("action down");
 
     			return 1;
     	}
