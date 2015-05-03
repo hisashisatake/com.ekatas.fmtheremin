@@ -13,7 +13,7 @@
 #include "fm.hpp"
 #include "playSimpleBufferQueue.hpp"
 
-class QueueBuffer;
+class playSimpleBufferQueue;
 
 class soundGenerator
 {
@@ -25,10 +25,10 @@ private:
 	short outputBuffer[OUTPUT_FRAMES];
 	void clearOutputBuffer();
 	pthread_mutex_t mutex;
-	QueueBuffer* owner;
+	playSimpleBufferQueue* owner;
 
 public:
-	soundGenerator(QueueBuffer* q, int n);
+	soundGenerator(playSimpleBufferQueue* q, int n);
 	virtual ~soundGenerator();
 	virtual myFM* getPriority();
 	virtual short* getOutputBuffer();

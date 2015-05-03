@@ -10,7 +10,7 @@
 
 #include "soundGenerator.hpp"
 
-soundGenerator::soundGenerator(QueueBuffer* q, int n = 5)
+soundGenerator::soundGenerator(playSimpleBufferQueue* q, int n = 5)
 {
 	owner = q;
 	count = n;

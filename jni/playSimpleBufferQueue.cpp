@@ -13,7 +13,7 @@
 #define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
 
 // Constructor
-QueueBuffer::QueueBuffer()
+playSimpleBufferQueue::playSimpleBufferQueue()
 {
 	bqPlayerObject = NULL;
 	engineObject = NULL;
@@ -31,7 +31,7 @@ QueueBuffer::QueueBuffer()
 }
 
 	// Destructor
-QueueBuffer::~QueueBuffer()
+playSimpleBufferQueue::~playSimpleBufferQueue()
 {
 	LOGI("BufferQueue destructor");
 
@@ -46,7 +46,7 @@ QueueBuffer::~QueueBuffer()
 }
 
 // this callback handler is called every time a buffer finishes playing
-void QueueBuffer::bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void* context)
+void playSimpleBufferQueue::bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void* context)
 {
 	if (bq == NULL || context == NULL)
 	{
@@ -54,7 +54,7 @@ void QueueBuffer::bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void* conte
 		return;
 	}
 
-	QueueBuffer* q = (QueueBuffer*)context;
+	playSimpleBufferQueue* q = (playSimpleBufferQueue*)context;
 
 	pthread_mutex_lock(&q->mutex);
 
@@ -76,7 +76,7 @@ void QueueBuffer::bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void* conte
 	pthread_mutex_unlock(&q->mutex);
 }
 
-void QueueBuffer::initialize()
+void playSimpleBufferQueue::initialize()
 {
 	//soundGenerator->setFreq(0);
 	//soundGenerator->setAmp(0);
@@ -84,7 +84,7 @@ void QueueBuffer::initialize()
 	createBufferQueueAudioPlayer();
 }
 
-void QueueBuffer::terminate()
+void playSimpleBufferQueue::terminate()
 {
 	LOGI("BufferQueue terminate");
 
@@ -95,12 +95,12 @@ void QueueBuffer::terminate()
 	shutdown();
 }
 
-void QueueBuffer::prepareKeyOn()
+void playSimpleBufferQueue::prepareKeyOn()
 {
 	generateSound->prepareKeyOn();
 }
 
-void QueueBuffer::setFreq(double freq)
+void playSimpleBufferQueue::setFreq(double freq)
 {
 //		pthread_mutex_lock(&mutex);
 	LOGI("Freq:%f", freq);
@@ -109,7 +109,7 @@ void QueueBuffer::setFreq(double freq)
 //	    pthread_mutex_unlock(&mutex);
 }
 
-void QueueBuffer::setAmp(double amp)
+void playSimpleBufferQueue::setAmp(double amp)
 {
 //		pthread_mutex_lock(&mutex);
 	myFM* sg = generateSound->getPriority();
@@ -117,7 +117,7 @@ void QueueBuffer::setAmp(double amp)
 //	    pthread_mutex_unlock(&mutex);
 }
 
-int QueueBuffer::getKeyOn()
+int playSimpleBufferQueue::getKeyOn()
 {
 //		pthread_mutex_lock(&mutex);
 	myFM* sg = generateSound->getPriority();
@@ -125,7 +125,7 @@ int QueueBuffer::getKeyOn()
 //	    pthread_mutex_unlock(&mutex);
 }
 
-void QueueBuffer::enqueue()
+void playSimpleBufferQueue::enqueue()
 {
 //		pthread_mutex_lock(&mutex);
 	short* buffer = generateSound->getOutputBuffer();
@@ -138,7 +138,7 @@ void QueueBuffer::enqueue()
 //	    pthread_mutex_unlock(&mutex);
 }
 
-void QueueBuffer::setStop()
+void playSimpleBufferQueue::setStop()
 {
 //		pthread_mutex_lock(&mutex);
 	SLresult result;
@@ -162,7 +162,7 @@ void QueueBuffer::setStop()
 //	    pthread_mutex_unlock(&mutex);
 }
 
-void QueueBuffer::shutdown()
+void playSimpleBufferQueue::shutdown()
 {
 	// destroy buffer queue audio player object, and invalidate all associated interfaces
 	if (bqPlayerObject != NULL) {
@@ -185,7 +185,7 @@ void QueueBuffer::shutdown()
 	}
 }
 
-void QueueBuffer::createEngine()
+void playSimpleBufferQueue::createEngine()
 {
 	SLresult result;
 
@@ -213,7 +213,7 @@ void QueueBuffer::createEngine()
 }
 
 // create buffer queue audio player
-void QueueBuffer::createBufferQueueAudioPlayer()
+void playSimpleBufferQueue::createBufferQueueAudioPlayer()
 {
 	SLresult result;
 
@@ -267,7 +267,7 @@ void QueueBuffer::createBufferQueueAudioPlayer()
 	// register callback on the buffer queue
 	result = (*bqPlayerBufferQueue)->RegisterCallback(bqPlayerBufferQueue,
 													  // callback static method
-													  &QueueBuffer::bqPlayerCallback,
+													  &playSimpleBufferQueue::bqPlayerCallback,
 													  // context is "this"
 													  this);
 	assert(SL_RESULT_SUCCESS == result);

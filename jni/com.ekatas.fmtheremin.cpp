@@ -29,7 +29,7 @@
 #include "playSimpleBufferQueue.hpp"
 
 // playSimpleBufferQueue Class
-static QueueBuffer* q = NULL;
+static playSimpleBufferQueue* q = NULL;
 
 /**
  * Our saved state data.
@@ -288,7 +288,7 @@ void android_main(struct android_app* state) {
     }
 
     // craete playSimpleBufferQueue instance
-    q = new QueueBuffer();
+    q = new playSimpleBufferQueue();
 
     // loop waiting for stuff to do.
     while (1) {

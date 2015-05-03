@@ -1,5 +1,5 @@
 /*
- * playSimpleQueueBuffer.hpp
+ * playSimpleplaySimpleBufferQueue.hpp
  *
  *  Created on: 2015/04/05
  *      Author: hisashisatake
@@ -21,7 +21,7 @@
 
 class soundGenerator;
 
-class QueueBuffer {
+class playSimpleBufferQueue {
 private:
 	// engine interfaces
 	SLObjectItf engineObject;
@@ -40,9 +40,9 @@ private:
 public:
 	pthread_mutex_t mutex;
 
-	QueueBuffer();
+	playSimpleBufferQueue();
 	// Destructor
-	virtual ~QueueBuffer();
+	virtual ~playSimpleBufferQueue();
 
 	// this callback handler is called every time a buffer finishes playing
 	static void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void* context);
