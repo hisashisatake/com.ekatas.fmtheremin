@@ -6,7 +6,7 @@ LOCAL_MODULE    := com.ekatas.fmtheremin
 LOCAL_SRC_FILES += com.ekatas.fmtheremin.cpp
 LOCAL_SRC_FILES += soundGenerator.cpp
 LOCAL_SRC_FILES += playSimpleBufferQueue.cpp
-LOCAL_SRC_FILES += fm.cpp
+LOCAL_SRC_FILES += myFM.cpp
 
 LOCAL_LDLIBS    := -llog -landroid -lEGL -lGLESv1_CM
 # for native audio
